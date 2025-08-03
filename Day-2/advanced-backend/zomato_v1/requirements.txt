@@ -3,3 +3,5 @@ sqlalchemy
 aiosqlite
 pydantic
 uvicorn
+python-multipart
+greenlet

@@ -1,47 +1,75 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from database import get_db
-from schemas import UserCreate, UserUpdate, UserResponse
+from schemas import RestaurantCreate, RestaurantUpdate, RestaurantResponse
 import crud
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 
-@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    return await crud.create_user(db=db, user=user)
+@router.post("/", response_model=RestaurantResponse, status_code=status.HTTP_201_CREATED)
+async def create_restaurant(restaurant: RestaurantCreate, db: AsyncSession = Depends(get_db)):
+    """Create a new restaurant"""
+    try:
+        return await crud.create_restaurant(db=db, restaurant=restaurant)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
+@router.get("/", response_model=List[RestaurantResponse])
+async def read_restaurants(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all restaurants with pagination"""
+    return await crud.get_restaurants(db, skip=skip, limit=limit)
 
+@router.get("/active", response_model=List[RestaurantResponse])
+async def read_active_restaurants(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get only active restaurants"""
+    return await crud.get_active_restaurants(db, skip=skip, limit=limit)
 
+@router.get("/search", response_model=List[RestaurantResponse])
+async def search_restaurants(
+    cuisine: str = Query(..., min_length=1, description="Cuisine type to search for"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Search restaurants by cuisine type"""
+    return await crud.search_restaurants_by_cuisine(db, cuisine_type=cuisine, skip=skip, limit=limit)
 
+@router.get("/{restaurant_id}", response_model=RestaurantResponse)
+async def read_restaurant(restaurant_id: int, db: AsyncSession = Depends(get_db)):
+    """Get a specific restaurant by ID"""
+    db_restaurant = await crud.get_restaurant(db, restaurant_id=restaurant_id)
+    if db_restaurant is None:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    return db_restaurant
 
+@router.put("/{restaurant_id}", response_model=RestaurantResponse)
+async def update_restaurant(
+    restaurant_id: int, 
+    restaurant: RestaurantUpdate, 
+    db: AsyncSession = Depends(get_db)
+):
+    """Update a restaurant"""
+    try:
+        db_restaurant = await crud.update_restaurant(db, restaurant_id=restaurant_id, restaurant_update=restaurant)
+        if db_restaurant is None:
+            raise HTTPException(status_code=404, detail="Restaurant not found")
+        return db_restaurant
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
-@router.get("/", response_model=List[UserResponse])
-async def read_users(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
-    return await crud.get_users(db, skip=skip, limit=limit)
-
-
-
-
-
-
-@router.get("/{user_id}", response_model=UserResponse)
-async def read_user(user_id: int, db: AsyncSession = Depends(get_db)):
-    db_user = await crud.get_user(db, user_id=user_id)
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return db_user
-
-@router.put("/{user_id}", response_model=UserResponse)
-async def update_user(user_id: int, user: UserUpdate, db: AsyncSession = Depends(get_db)):
-    db_user = await crud.update_user(db, user_id=user_id, user_update=user)
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return db_user
-
-@router.delete("/{user_id}", response_model=UserResponse)
-async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)):
-    db_user = await crud.delete_user(db, user_id=user_id)
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return db_user
+@router.delete("/{restaurant_id}", response_model=RestaurantResponse)
+async def delete_restaurant(restaurant_id: int, db: AsyncSession = Depends(get_db)):
+    """Delete a restaurant"""
+    db_restaurant = await crud.delete_restaurant(db, restaurant_id=restaurant_id)
+    if db_restaurant is None:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    return db_restaurant
