@@ -1,6 +1,7 @@
 from fastapi import FastAPI
-from database import create_tables
+from database import create_tables, init_cache
 from routes.restaurants import router as restaurant_router
+from routes.cache import router as cache_router
 from routes.menu_items import router as menu_items_router
 from routes.customers import router as customer_router
 from routes.orders import router as order_router
@@ -19,6 +20,7 @@ app = FastAPI(
 @app.on_event("startup")
 async def startup_event():
     await create_tables()
+    await init_cache()
 
 # Include all routers
 app.include_router(restaurant_router)
@@ -27,6 +29,7 @@ app.include_router(customer_router)
 app.include_router(order_router)
 app.include_router(review_router)
 app.include_router(analytics_router)
+app.include_router(cache_router)
 
 @app.get("/")
 async def root():
@@ -45,7 +48,9 @@ async def root():
             "Restaurant Search & Filtering",
             "Order History & Tracking",
             "Business Intelligence Dashboard",
-            "Performance Metrics & KPIs"
+            "Performance Metrics & KPIs",
+            "Redis Caching for Performance",
+            "Cache Management & Monitoring"
         ],
         "relationships": [
             "Customer → Many Orders (One-to-Many)",
@@ -60,7 +65,8 @@ async def root():
             "reviews": "/reviews",
             "analytics": "/analytics",
             "restaurants": "/restaurants",
-            "menu_items": "/menu-items"
+            "menu_items": "/menu-items",
+            "cache": "/cache"
         }
     }
 

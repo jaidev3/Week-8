@@ -5,3 +5,5 @@ pydantic
 uvicorn
 python-multipart
 greenlet
+redis==5.0.1
+fastapi-cache2==0.2.1

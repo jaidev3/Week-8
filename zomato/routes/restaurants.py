@@ -4,10 +4,11 @@ from typing import List, Optional
 from database import get_db
 from schemas import (
     RestaurantCreate, RestaurantUpdate, RestaurantResponse, RestaurantWithMenu, 
-    MenuItemCreate, MenuItemResponse, RestaurantAnalytics, RestaurantWithReviews
+    MenuItemCreate, MenuItemResponse, RestaurantAnalytics
 )
 import crud
 from utils.business_logic import search_restaurants, get_trending_restaurants
+from utils.cache_utils import cache_response, invalidate_restaurant_cache
 
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 
@@ -15,11 +16,15 @@ router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 async def create_restaurant(restaurant: RestaurantCreate, db: AsyncSession = Depends(get_db)):
     """Create a new restaurant"""
     try:
-        return await crud.create_restaurant(db=db, restaurant=restaurant)
+        result = await crud.create_restaurant(db=db, restaurant=restaurant)
+        # Invalidate restaurant caches after creation
+        await invalidate_restaurant_cache()
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 @router.get("/", response_model=List[RestaurantResponse])
+@cache_response("restaurants", "restaurants_list", lambda *args, **kwargs: f"read_restaurants_{kwargs.get('skip', 0)}_{kwargs.get('limit', 100)}")
 async def read_restaurants(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
@@ -29,6 +34,7 @@ async def read_restaurants(
     return await crud.get_restaurants(db, skip=skip, limit=limit)
 
 @router.get("/active", response_model=List[RestaurantResponse])
+@cache_response("restaurants", "active_restaurants", lambda *args, **kwargs: f"read_active_restaurants_{kwargs.get('skip', 0)}_{kwargs.get('limit', 100)}")
 async def read_active_restaurants(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
@@ -38,6 +44,7 @@ async def read_active_restaurants(
     return await crud.get_active_restaurants(db, skip=skip, limit=limit)
 
 @router.get("/search", response_model=List[RestaurantResponse])
+@cache_response("restaurants", "restaurant_search", lambda *args, **kwargs: f"search_restaurants_{kwargs.get('cuisine', 'none')}_{kwargs.get('min_rating', 'none')}_{kwargs.get('location', 'none')}_{kwargs.get('skip', 0)}_{kwargs.get('limit', 100)}")
 async def search_restaurants_advanced(
     cuisine: Optional[str] = Query(None, description="Cuisine type to search for"),
     min_rating: Optional[float] = Query(None, ge=0.0, le=5.0, description="Minimum rating"),
@@ -53,6 +60,7 @@ async def search_restaurants_advanced(
     )
 
 @router.get("/trending", response_model=List[dict])
+@cache_response("restaurants", "trending_restaurants", lambda *args, **kwargs: f"get_trending_restaurants_{kwargs.get('limit', 10)}_{kwargs.get('days', 7)}")
 async def get_trending_restaurants_endpoint(
     limit: int = Query(10, ge=1, le=50, description="Number of trending restaurants to return"),
     days: int = Query(7, ge=1, le=30, description="Number of days to consider for trending"),
@@ -62,6 +70,7 @@ async def get_trending_restaurants_endpoint(
     return await get_trending_restaurants(db, limit=limit, days=days)
 
 @router.get("/{restaurant_id}", response_model=RestaurantResponse)
+@cache_response("restaurants", "restaurant_detail", lambda restaurant_id, *args, **kwargs: f"read_restaurant_{restaurant_id}")
 async def read_restaurant(restaurant_id: int, db: AsyncSession = Depends(get_db)):
     """Get a specific restaurant by ID"""
     db_restaurant = await crud.get_restaurant(db, restaurant_id=restaurant_id)
@@ -70,6 +79,7 @@ async def read_restaurant(restaurant_id: int, db: AsyncSession = Depends(get_db)
     return db_restaurant
 
 @router.get("/{restaurant_id}/with-menu", response_model=RestaurantWithMenu)
+@cache_response("restaurants", "restaurant_detail", lambda restaurant_id, *args, **kwargs: f"read_restaurant_with_menu_{restaurant_id}")
 async def read_restaurant_with_menu(restaurant_id: int, db: AsyncSession = Depends(get_db)):
     """Get restaurant with all menu items"""
     db_restaurant = await crud.get_restaurant_with_menu(db, restaurant_id=restaurant_id)
@@ -78,6 +88,7 @@ async def read_restaurant_with_menu(restaurant_id: int, db: AsyncSession = Depen
     return db_restaurant
 
 @router.get("/{restaurant_id}/menu", response_model=List[MenuItemResponse])
+@cache_response("restaurants", "restaurant_menu", lambda restaurant_id, *args, **kwargs: f"read_restaurant_menu_{restaurant_id}_{kwargs.get('skip', 0)}_{kwargs.get('limit', 100)}")
 async def read_restaurant_menu(
     restaurant_id: int,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
@@ -117,6 +128,8 @@ async def update_restaurant(
         db_restaurant = await crud.update_restaurant(db, restaurant_id=restaurant_id, restaurant_update=restaurant)
         if db_restaurant is None:
             raise HTTPException(status_code=404, detail="Restaurant not found")
+        # Invalidate restaurant caches after update
+        await invalidate_restaurant_cache(restaurant_id)
         return db_restaurant
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -127,6 +140,8 @@ async def delete_restaurant(restaurant_id: int, db: AsyncSession = Depends(get_d
     db_restaurant = await crud.delete_restaurant(db, restaurant_id=restaurant_id)
     if db_restaurant is None:
         raise HTTPException(status_code=404, detail="Restaurant not found")
+    # Invalidate restaurant caches after deletion
+    await invalidate_restaurant_cache(restaurant_id)
     return db_restaurant
 
 @router.get("/{restaurant_id}/reviews", response_model=List[dict])
