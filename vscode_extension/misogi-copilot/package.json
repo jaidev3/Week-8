@@ -33,6 +33,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/uuid": "^10.0.0",
     "@types/vscode": "^1.77.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
@@ -44,9 +45,28 @@
   "dependencies": {
     "axios": "^1.11.0",
     "dotenv": "^17.2.1",
-    "openai": "^5.11.0"
+    "openai": "^5.11.0",
+    "uuid": "^10.0.0"
   },
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "misogiCopilot",
+          "title": "Misogi Copilot",
+          "icon": "$(robot)"
+        }
+      ]
+    },
+    "views": {
+      "misogiCopilot": [
+        {
+          "type": "webview",
+          "id": "misogiCopilot.chatView",
+          "name": "Chat"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "extension.completeCode",
@@ -62,6 +82,16 @@
         "command": "extension.configureApiKey",
         "title": "Misogi Copilot: Configure API Key",
         "category": "Misogi Copilot"
+      },
+      {
+        "command": "extension.openChatPanel",
+        "title": "Misogi Copilot: Open Chat in Side Panel",
+        "category": "Misogi Copilot"
+      },
+      {
+        "command": "extension.clearChatHistory",
+        "title": "Misogi Copilot: Clear Chat History",
+        "category": "Misogi Copilot"
       }
     ],
     "keybindings": [
@@ -76,8 +106,14 @@
         "key": "ctrl+shift+s",
         "mac": "cmd+shift+s",
         "when": "editorHasSelection"
+      },
+      {
+        "command": "extension.openChatPanel",
+        "key": "ctrl+shift+c",
+        "mac": "cmd+shift+c"
       }
     ],
+    
     "configuration": {
       "title": "Misogi Copilot",
       "properties": {

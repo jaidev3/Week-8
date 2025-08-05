@@ -1,171 +1,217 @@
-# Misogi Copilot - AI Coding Assistant for VS Code
+# Misogi Copilot - VS Code AI Assistant Extension
 
-A powerful AI-powered coding assistant extension for Visual Studio Code that leverages OpenAI's GPT models to provide intelligent code completions, suggestions, and help.
+An intelligent VS Code extension that mimics Cursor IDE's AI assistant functionality with agent orchestration and state management.
 
 ## Features
 
-### 🚀 Inline Code Completions
-- **Smart Completions**: Get AI-powered code completions as you type
-- **Context-Aware**: Uses surrounding code context for better suggestions
-- **Multi-Language Support**: Works with all programming languages supported by VS Code
+### Day 1 Implementation ✅
 
-### 💡 Code Suggestions & Reviews
-- **Code Analysis**: Get intelligent suggestions for code improvements
-- **Best Practices**: Receive recommendations following coding best practices
-- **Performance Tips**: Get suggestions for performance optimizations
-- **Security Insights**: Identify potential security issues
+- **🤖 Chat Interface**: Clean webview panel with bi-directional communication
+- **🔄 Agent Orchestration**: Simplified agent flow with Input → Processing → LLM → Response
+- **💾 State Management**: Conversation history persistence using VS Code's state API
+- **🔧 Context Awareness**: Automatic detection of active file, selected text, and workspace info
+- **⚡ Real-time Communication**: WebView messaging for instant responses
+- **🎨 VS Code Theme Integration**: UI that matches your VS Code theme
 
-### 🔍 AI-Powered Hover Help
-- **Smart Tooltips**: Get AI explanations when hovering over code symbols
-- **Contextual Help**: Understand functions, variables, and code patterns
-- **Learning Assistant**: Perfect for learning new languages or frameworks
+## Installation & Setup
 
-### ⚙️ Configurable Settings
-- **Multiple Models**: Choose from GPT-3.5-turbo, GPT-4, or GPT-4-turbo
-- **Adjustable Parameters**: Customize temperature, max tokens, and more
-- **Toggle Features**: Enable/disable specific features as needed
+### Prerequisites
+- VS Code 1.77.0 or higher
+- Node.js 16.x or higher
+- OpenAI API key
 
-## Installation
+### Development Setup
 
-1. Install the extension from the VS Code Marketplace
-2. Get your OpenAI API key from [OpenAI Platform](https://platform.openai.com/api-keys)
-3. Configure your API key using the command palette
-
-## Setup
-
-### 1. Get OpenAI API Key
-1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
-2. Sign in or create an account
-3. Create a new API key
-4. Copy the API key (starts with `sk-`)
-
-### 2. Configure the Extension
-
-#### Option A: Using .env File (Recommended)
-1. Open VS Code Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
-2. Run command: `Misogi Copilot: Configure API Key`
-3. Choose "Create .env file (Recommended)"
-4. Enter your OpenAI API key
-5. The extension will create a `.env` file in your workspace root
-
-**Manual Setup:**
-1. Create a `.env` file in your project root
-2. Add your API key:
+1. **Clone and Install Dependencies**
+   ```bash
+   cd vscode_extension/misogi-copilot
+   npm install
    ```
-   OPENAI_API_KEY=sk-your-actual-api-key-here
+
+2. **Configure API Key**
+   - Copy `env.example` to `.env`
+   - Add your OpenAI API key:
+     ```
+     OPENAI_API_KEY=sk-your-openai-api-key-here
+     ```
+
+3. **Compile and Run**
+   ```bash
+   npm run compile
    ```
-3. The extension will automatically detect and use it
-
-#### Option B: Using VS Code Settings
-1. Open VS Code Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
-2. Run command: `Misogi Copilot: Configure API Key`
-3. Choose "Use VS Code Settings"
-4. Enter your OpenAI API key
-5. The key will be stored in VS Code's global settings
-
-### 3. Security Note
-- The `.env` file is automatically added to `.gitignore` to prevent accidental commits
-- Never commit your API key to version control
-- The `.env` method is recommended as it keeps secrets local to your project
+   - Press F5 in VS Code to launch Extension Development Host
+   - Or use `Ctrl+Shift+P` → "Developer: Reload Window"
 
 ## Usage
 
-### Inline Code Completions
-- Simply start typing code
-- Completions will appear automatically
-- Press `Tab` to accept suggestions
-- Use `Option+Space` (Mac) or `Ctrl+Space` (Windows/Linux) to manually trigger completions
+### Commands
 
-### Code Suggestions
-1. Select the code you want to analyze
-2. Use `Cmd+Shift+S` (Mac) or `Ctrl+Shift+S` (Windows/Linux)
-3. Or run: `Misogi Copilot: Suggest Code Improvements`
-4. View suggestions in a new document
+- **`Ctrl+Shift+C`** (Mac: `Cmd+Shift+C`) - Open Chat Panel
+- **`Ctrl+Space`** (Mac: `Option+Space`) - Complete Code
+- **`Ctrl+Shift+S`** (Mac: `Cmd+Shift+S`) - Suggest Code Improvements
 
-### Hover Help
-1. Enable in settings: `misogiCopilot.enableHover`
-2. Hover over any code symbol
-3. Get AI-powered explanations and help
+### Chat Interface
 
-## Commands
+1. **Open Chat Panel**: Use `Ctrl+Shift+C` or Command Palette → "Misogi Copilot: Open Chat Panel"
+2. **Ask Questions**: Type your coding questions in the input field
+3. **Context Awareness**: The AI automatically sees your active file and selected text
+4. **Clear History**: Click the 🗑️ button to start a new conversation
 
-| Command | Description | Shortcut |
-|---------|-------------|----------|
-| `Misogi Copilot: Complete Code` | Get AI code completion | `Option+Space` (Mac), `Ctrl+Space` (Win/Linux) |
-| `Misogi Copilot: Suggest Code Improvements` | Analyze selected code | `Cmd+Shift+S` (Mac), `Ctrl+Shift+S` (Win/Linux) |
-| `Misogi Copilot: Configure API Key` | Set up OpenAI API key | - |
+### Configuration
 
-## Configuration
+Access settings via `File > Preferences > Settings` → search "Misogi Copilot":
 
-Access settings via `File > Preferences > Settings` and search for "Misogi Copilot":
+- **API Key**: Your OpenAI API key
+- **Model**: Choose between GPT-3.5-turbo, GPT-4, or GPT-4-turbo
+- **Max Tokens**: Control response length (50-1000)
+- **Temperature**: Creativity level (0-2)
+- **Enable Hover**: Show AI hints on hover
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `misogiCopilot.openaiApiKey` | Your OpenAI API key | "" |
-| `misogiCopilot.model` | OpenAI model to use | "gpt-3.5-turbo" |
-| `misogiCopilot.maxTokens` | Maximum tokens for completions | 150 |
-| `misogiCopilot.temperature` | AI creativity level (0-2) | 0.7 |
-| `misogiCopilot.enableHover` | Enable hover help | false |
+## Architecture
 
-### Available Models
-- `gpt-3.5-turbo` - Fast and cost-effective
-- `gpt-4` - More capable, higher quality
-- `gpt-4-turbo-preview` - Latest GPT-4 with improved performance
+### Core Components
 
-## Status Bar
+```
+src/
+├── agent/
+│   ├── chatAgent.ts      # AI agent with simplified flow
+│   └── state.ts          # State interfaces and types
+├── chatPanel.ts          # WebView panel provider
+├── stateManager.ts       # Conversation persistence
+├── extension.ts          # Main extension entry point
+├── openaiService.ts      # OpenAI API integration
+├── completionProvider.ts # Inline completions
+├── hoverProvider.ts      # Hover hints
+└── commands.ts           # Extension commands
 
-The extension shows its status in the VS Code status bar:
-- 🤖 **Misogi Copilot ✓** - Ready and configured
-- 🤖 **Misogi Copilot ⚠** - API key required (click to configure)
+media/
+├── chat.css             # Chat UI styles
+└── chat.js              # Chat UI JavaScript
+```
 
-## Privacy & Security
+### Agent Flow
 
-- Your code is sent to OpenAI's API for processing
-- API calls are made directly from your machine to OpenAI
-- No code is stored or logged by this extension
-- Your API key is stored securely in VS Code settings
+1. **Input Processing**: Capture user message and context
+2. **Context Enrichment**: Add VS Code workspace information
+3. **LLM Processing**: Send to OpenAI with system prompt
+4. **Response Formatting**: Return structured response
+5. **State Persistence**: Save conversation history
+
+### State Management
+
+- **Session Storage**: Conversations persist across VS Code restarts
+- **Context Tracking**: Active file, selected text, language detection
+- **History Limits**: Max 10 sessions, 100 messages per session
+- **Automatic Cleanup**: Old sessions cleaned up after 30 days
+
+## Example Interactions
+
+### Code Review
+```
+User: "Review this function for performance issues"
+[Selected code is automatically included]
+
+AI: "I can see you've selected a function that processes an array. Here are some performance optimizations:
+1. Use Array.forEach() instead of for loops for better readability
+2. Consider using Set for faster lookups if you're checking membership
+3. The nested loop has O(n²) complexity - consider using a Map for O(n) solution"
+```
+
+### Code Completion
+```
+User: "Complete this React component"
+[Current file context is included]
+
+AI: "Based on your component structure, here's the completion:
+- Add proper TypeScript interfaces for props
+- Implement error boundaries
+- Add loading states for better UX"
+```
+
+### Debugging Help
+```
+User: "Why is this API call failing?"
+[Error context and code automatically included]
+
+AI: "Looking at your API call, I can see a few potential issues:
+1. Missing error handling for network failures
+2. Incorrect Content-Type header
+3. The endpoint URL seems to have a typo in the path"
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
-**"OpenAI API key not configured"**
-- Run `Misogi Copilot: Configure API Key` command
-- Ensure your API key starts with `sk-`
-- Check that you have sufficient OpenAI credits
-- If using .env file, make sure it's in your workspace root
-- Verify the .env file contains: `OPENAI_API_KEY=sk-your-key`
+**Extension not activating:**
+- Check VS Code version (requires 1.77.0+)
+- Reload window: `Ctrl+Shift+P` → "Developer: Reload Window"
 
-**"Failed to get code completion"**
-- Check your internet connection
-- Verify your OpenAI API key is valid
-- Ensure you have sufficient API credits
-- Try reducing `maxTokens` in settings
+**API Key not working:**
+- Verify key in settings or `.env` file
+- Check OpenAI account has sufficient credits
+- Ensure key has correct permissions
 
-**Completions not appearing**
-- Make sure you're typing in a supported file type
-- Check that the extension is active (status bar shows ✓)
-- Try manually triggering with the keyboard shortcut
+**Chat panel not opening:**
+- Try command palette: "Misogi Copilot: Open Chat Panel"
+- Check Developer Console for errors: `Help > Toggle Developer Tools`
 
-### Performance Tips
-- Use `gpt-3.5-turbo` for faster responses
-- Reduce `maxTokens` for quicker completions
-- Disable `enableHover` if you experience lag
+**Compilation errors:**
+```bash
+npm run compile
+# Check for TypeScript errors
+```
 
-## Requirements
+## Development
 
-- VS Code 1.77.0 or higher
-- OpenAI API key with sufficient credits
-- Internet connection
+### Building from Source
+
+```bash
+# Install dependencies
+npm install
+
+# Compile TypeScript
+npm run compile
+
+# Watch for changes
+npm run watch
+
+# Run tests
+npm test
+
+# Package extension
+vsce package
+```
+
+### Future Enhancements (Roadmap)
+
+- **🔄 Full LangGraph Integration**: Complete agent orchestration with complex workflows
+- **📁 File System Operations**: Create, edit, and manage files through chat
+- **🔍 Code Search**: Semantic search across workspace
+- **🧪 Test Generation**: Automatic test case creation
+- **📊 Code Analytics**: Complexity analysis and metrics
+- **🎯 Custom Agents**: Specialized agents for different programming languages
+- **🔗 Git Integration**: Commit message generation, PR reviews
+- **📝 Documentation**: Auto-generate documentation from code
 
 ## Contributing
 
-Found a bug or have a feature request? Please open an issue on our GitHub repository.
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
 
 ## License
 
-This extension is provided as-is. Please review OpenAI's usage policies when using their API.
+MIT License - see LICENSE file for details.
+
+## Acknowledgments
+
+- Built with VS Code Extension API
+- Powered by OpenAI GPT models
+- Inspired by Cursor IDE's AI assistant functionality
 
 ---
 
-**Enjoy coding with AI assistance! 🚀**
+**Made with ❤️ for developers who want AI-powered coding assistance in VS Code**
