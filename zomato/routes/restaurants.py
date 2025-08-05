@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from database import get_db
-from schemas import RestaurantCreate, RestaurantUpdate, RestaurantResponse
+from schemas import RestaurantCreate, RestaurantUpdate, RestaurantResponse, RestaurantWithMenu, MenuItemCreate, MenuItemResponse
 import crud
 
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
@@ -50,6 +50,43 @@ async def read_restaurant(restaurant_id: int, db: AsyncSession = Depends(get_db)
     if db_restaurant is None:
         raise HTTPException(status_code=404, detail="Restaurant not found")
     return db_restaurant
+
+@router.get("/{restaurant_id}/with-menu", response_model=RestaurantWithMenu)
+async def read_restaurant_with_menu(restaurant_id: int, db: AsyncSession = Depends(get_db)):
+    """Get restaurant with all menu items"""
+    db_restaurant = await crud.get_restaurant_with_menu(db, restaurant_id=restaurant_id)
+    if db_restaurant is None:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    return db_restaurant
+
+@router.get("/{restaurant_id}/menu", response_model=List[MenuItemResponse])
+async def read_restaurant_menu(
+    restaurant_id: int,
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all menu items for a restaurant"""
+    # First check if restaurant exists
+    db_restaurant = await crud.get_restaurant(db, restaurant_id=restaurant_id)
+    if db_restaurant is None:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    
+    return await crud.get_restaurant_menu_items(db, restaurant_id=restaurant_id, skip=skip, limit=limit)
+
+@router.post("/{restaurant_id}/menu-items/", response_model=MenuItemResponse, status_code=status.HTTP_201_CREATED)
+async def create_restaurant_menu_item(
+    restaurant_id: int,
+    menu_item: MenuItemCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Add menu item to restaurant"""
+    # Override restaurant_id from URL
+    menu_item.restaurant_id = restaurant_id
+    try:
+        return await crud.create_menu_item(db=db, menu_item=menu_item)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 @router.put("/{restaurant_id}", response_model=RestaurantResponse)
 async def update_restaurant(

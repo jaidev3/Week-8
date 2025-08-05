@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, validator
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, time
+from decimal import Decimal
 import re
 
 class RestaurantBase(BaseModel):
@@ -57,3 +58,67 @@ class RestaurantResponse(RestaurantBase):
 
     class Config:
         from_attributes = True
+
+# MenuItem Schemas
+class MenuItemBase(BaseModel):
+    name: str = Field(..., min_length=3, max_length=100)
+    description: Optional[str] = None
+    price: Decimal = Field(..., gt=0, decimal_places=2)
+    category: str = Field(..., min_length=1, max_length=50)
+    is_vegetarian: bool = Field(default=False)
+    is_vegan: bool = Field(default=False)
+    is_available: bool = Field(default=True)
+    preparation_time: Optional[int] = Field(None, ge=1, le=300)  # 1-300 minutes
+    
+    @validator('price')
+    def validate_price(cls, v):
+        if v <= 0:
+            raise ValueError('Price must be positive')
+        return v
+    
+    @validator('is_vegan')
+    def validate_vegan_vegetarian(cls, v, values):
+        if v and not values.get('is_vegetarian', False):
+            raise ValueError('Vegan items must also be vegetarian')
+        return v
+
+class MenuItemCreate(MenuItemBase):
+    restaurant_id: int = Field(..., gt=0)
+
+class MenuItemUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=3, max_length=100)
+    description: Optional[str] = None
+    price: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
+    category: Optional[str] = Field(None, min_length=1, max_length=50)
+    is_vegetarian: Optional[bool] = None
+    is_vegan: Optional[bool] = None
+    is_available: Optional[bool] = None
+    preparation_time: Optional[int] = Field(None, ge=1, le=300)
+    
+    @validator('price')
+    def validate_price(cls, v):
+        if v is not None and v <= 0:
+            raise ValueError('Price must be positive')
+        return v
+    
+    @validator('is_vegan')
+    def validate_vegan_vegetarian(cls, v, values):
+        if v is not None and v and not values.get('is_vegetarian', False):
+            raise ValueError('Vegan items must also be vegetarian')
+        return v
+
+class MenuItemResponse(MenuItemBase):
+    id: int
+    restaurant_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Nested Schemas for complex responses
+class MenuItemWithRestaurant(MenuItemResponse):
+    restaurant: RestaurantResponse
+
+class RestaurantWithMenu(RestaurantResponse):
+    menu_items: List[MenuItemResponse] = []
