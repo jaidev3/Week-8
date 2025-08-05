@@ -205,3 +205,11 @@ checkpoints/
 
 # FastAPI / Uvicorn
 .pytest_cache/
+
+
+# add gitignore for nodejs project too
+node_modules/
+package-lock.json
+
+
+
