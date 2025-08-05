@@ -1,9 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import List, Optional
 from database import get_db
-from schemas import RestaurantCreate, RestaurantUpdate, RestaurantResponse, RestaurantWithMenu, MenuItemCreate, MenuItemResponse
+from schemas import (
+    RestaurantCreate, RestaurantUpdate, RestaurantResponse, RestaurantWithMenu, 
+    MenuItemCreate, MenuItemResponse, RestaurantAnalytics, RestaurantWithReviews
+)
 import crud
+from utils.business_logic import search_restaurants, get_trending_restaurants
 
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 
@@ -34,14 +38,28 @@ async def read_active_restaurants(
     return await crud.get_active_restaurants(db, skip=skip, limit=limit)
 
 @router.get("/search", response_model=List[RestaurantResponse])
-async def search_restaurants(
-    cuisine: str = Query(..., min_length=1, description="Cuisine type to search for"),
+async def search_restaurants_advanced(
+    cuisine: Optional[str] = Query(None, description="Cuisine type to search for"),
+    min_rating: Optional[float] = Query(None, ge=0.0, le=5.0, description="Minimum rating"),
+    location: Optional[str] = Query(None, description="Location to search in"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Search restaurants by cuisine type"""
-    return await crud.search_restaurants_by_cuisine(db, cuisine_type=cuisine, skip=skip, limit=limit)
+    """Advanced restaurant search with multiple filters"""
+    return await search_restaurants(
+        db, cuisine=cuisine, min_rating=min_rating, location=location, 
+        skip=skip, limit=limit
+    )
+
+@router.get("/trending", response_model=List[dict])
+async def get_trending_restaurants_endpoint(
+    limit: int = Query(10, ge=1, le=50, description="Number of trending restaurants to return"),
+    days: int = Query(7, ge=1, le=30, description="Number of days to consider for trending"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get trending restaurants based on recent order activity"""
+    return await get_trending_restaurants(db, limit=limit, days=days)
 
 @router.get("/{restaurant_id}", response_model=RestaurantResponse)
 async def read_restaurant(restaurant_id: int, db: AsyncSession = Depends(get_db)):
@@ -110,3 +128,33 @@ async def delete_restaurant(restaurant_id: int, db: AsyncSession = Depends(get_d
     if db_restaurant is None:
         raise HTTPException(status_code=404, detail="Restaurant not found")
     return db_restaurant
+
+@router.get("/{restaurant_id}/reviews", response_model=List[dict])
+async def get_restaurant_reviews(
+    restaurant_id: int,
+    skip: int = Query(0, ge=0, description="Number of reviews to skip"),
+    limit: int = Query(100, ge=1, le=500, description="Number of reviews to return"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all reviews for a restaurant"""
+    # Check if restaurant exists
+    restaurant = await crud.get_restaurant(db, restaurant_id)
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    
+    reviews = await crud.get_restaurant_reviews(db, restaurant_id, skip=skip, limit=limit)
+    return reviews
+
+@router.get("/{restaurant_id}/analytics", response_model=RestaurantAnalytics)
+async def get_restaurant_analytics(
+    restaurant_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get comprehensive performance metrics for a restaurant"""
+    # Check if restaurant exists
+    restaurant = await crud.get_restaurant(db, restaurant_id)
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    
+    analytics = await crud.get_restaurant_analytics(db, restaurant_id)
+    return analytics

@@ -2,7 +2,16 @@ from pydantic import BaseModel, Field, validator
 from typing import Optional, List
 from datetime import datetime, time
 from decimal import Decimal
+from enum import Enum
 import re
+
+class OrderStatusEnum(str, Enum):
+    PLACED = "placed"
+    CONFIRMED = "confirmed"
+    PREPARING = "preparing"
+    OUT_FOR_DELIVERY = "out_for_delivery"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
 
 class RestaurantBase(BaseModel):
     name: str = Field(..., min_length=3, max_length=100)
@@ -116,9 +125,146 @@ class MenuItemResponse(MenuItemBase):
     class Config:
         from_attributes = True
 
-# Nested Schemas for complex responses
+# Customer Schemas
+class CustomerBase(BaseModel):
+    name: str = Field(..., min_length=2, max_length=100)
+    email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+    phone_number: str = Field(..., min_length=10, max_length=20)
+    address: str = Field(..., min_length=5)
+    
+    @validator('phone_number')
+    def validate_phone_number(cls, v):
+        digits_only = re.sub(r'\D', '', v)
+        if len(digits_only) < 10:
+            raise ValueError('Phone number must contain at least 10 digits')
+        return v
+
+class CustomerCreate(CustomerBase):
+    pass
+
+class CustomerUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=2, max_length=100)
+    email: Optional[str] = Field(None, pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+    phone_number: Optional[str] = Field(None, min_length=10, max_length=20)
+    address: Optional[str] = Field(None, min_length=5)
+    is_active: Optional[bool] = None
+    
+    @validator('phone_number')
+    def validate_phone_number(cls, v):
+        if v is not None:
+            digits_only = re.sub(r'\D', '', v)
+            if len(digits_only) < 10:
+                raise ValueError('Phone number must contain at least 10 digits')
+        return v
+
+class CustomerResponse(CustomerBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Order Item Schemas
+class OrderItemBase(BaseModel):
+    menu_item_id: int = Field(..., gt=0)
+    quantity: int = Field(..., gt=0, le=50)
+    special_requests: Optional[str] = None
+
+class OrderItemCreate(OrderItemBase):
+    pass
+
+class OrderItemResponse(OrderItemBase):
+    id: int
+    order_id: int
+    item_price: Decimal
+
+    class Config:
+        from_attributes = True
+
+# Order Schemas
+class OrderBase(BaseModel):
+    restaurant_id: int = Field(..., gt=0)
+    delivery_address: str = Field(..., min_length=5)
+    special_instructions: Optional[str] = None
+
+class OrderCreate(OrderBase):
+    items: List[OrderItemCreate] = Field(..., min_items=1)
+
+class OrderUpdate(BaseModel):
+    order_status: Optional[OrderStatusEnum] = None
+    delivery_address: Optional[str] = Field(None, min_length=5)
+    special_instructions: Optional[str] = None
+    delivery_time: Optional[datetime] = None
+
+class OrderResponse(OrderBase):
+    id: int
+    customer_id: int
+    order_status: OrderStatusEnum
+    total_amount: Decimal
+    order_date: datetime
+    delivery_time: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+# Review Schemas
+class ReviewBase(BaseModel):
+    rating: int = Field(..., ge=1, le=5)
+    comment: Optional[str] = Field(None, max_length=1000)
+
+class ReviewCreate(ReviewBase):
+    pass
+
+class ReviewResponse(ReviewBase):
+    id: int
+    customer_id: int
+    restaurant_id: int
+    order_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Complex nested schemas for detailed responses
 class MenuItemWithRestaurant(MenuItemResponse):
     restaurant: RestaurantResponse
 
 class RestaurantWithMenu(RestaurantResponse):
     menu_items: List[MenuItemResponse] = []
+
+class OrderItemWithMenuItem(OrderItemResponse):
+    menu_item: MenuItemResponse
+
+class OrderWithDetails(OrderResponse):
+    customer: CustomerResponse
+    restaurant: RestaurantResponse
+    order_items: List[OrderItemWithMenuItem] = []
+
+class CustomerWithOrders(CustomerResponse):
+    orders: List[OrderResponse] = []
+
+class RestaurantWithReviews(RestaurantResponse):
+    reviews: List[ReviewResponse] = []
+    average_rating: Optional[float] = None
+
+# Analytics Schemas
+class RestaurantAnalytics(BaseModel):
+    restaurant_id: int
+    total_orders: int
+    total_revenue: Decimal
+    average_order_value: Decimal
+    average_rating: float
+    total_reviews: int
+    popular_items: List[dict]
+    orders_by_status: dict
+
+class CustomerAnalytics(BaseModel):
+    customer_id: int
+    total_orders: int
+    total_spent: Decimal
+    average_order_value: Decimal
+    favorite_restaurants: List[dict]
+    favorite_cuisines: List[dict]
+    orders_by_status: dict
